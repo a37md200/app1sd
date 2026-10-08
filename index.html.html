@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سريع - نقل الملفات عبر الواي فاي والويب</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            400: '#38bdf8',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            700: '#0e7490',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts (Cairo) -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- External JS Libraries -->
+    <!-- PeerJS for WebRTC Data Connections -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- QRCode.js Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- HTML5 Camera QR Code Scanner -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- Canvas Confetti for Completion Effects -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #030712;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-card {
+            background: rgba(31, 41, 55, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .glow-effect {
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.25);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.3);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(56, 189, 248, 0.6);
+        }
+
+        .animated-gradient-border {
+            position: relative;
+            border-radius: 1.5rem;
+            background: linear-gradient(60deg, #06b6d4, #3b82f6, #8b5cf6, #06b6d4);
+            background-size: 300% 300%;
+            animation: moveGradient 6s ease infinite;
+            padding: 2px;
+        }
+
+        @keyframes moveGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-cyan-500 selection:text-white">
+
+    <header class="sticky top-0 z-40 glass-panel border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            
+            <!-- Logo Section -->
+            <div class="flex items-center gap-3 cursor-pointer" onclick="window.location.hash=''">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                    <i class="fa-solid fa-bolt-lightning text-white text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-black text-2xl tracking-tight gradient-text">سريــــع</h1>
+                        <span class="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2.5 py-0.5 rounded-full font-bold">P2P WebRTC</span>
+                    </div>
+                    <p class="text-xs text-gray-400">نقل مباشر للملفات والصور بدون سيرفرات واسطة</p>
+                </div>
+            </div>
+
+            <!-- View Switcher -->
+            <div class="flex items-center gap-1.5 bg-gray-900/90 p-1.5 rounded-2xl border border-gray-800 shadow-inner">
+                <button id="pcModeBtn" onclick="setMode('pc')" 
+                        class="px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-600/20">
+                    <i class="fa-solid fa-desktop"></i>
+                    <span class="hidden sm:inline">الحاسوب (المستقبل)</span>
+                </button>
+                <button id="mobileModeBtn" onclick="setMode('mobile')" 
+                        class="px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    <span class="hidden sm:inline">الموبايل (المرسل)</span>
+                </button>
+            </div>
+
+            <!-- Header Actions -->
+            <div class="flex items-center gap-2">
+                <button onclick="toggleModal('instructionsModal')" class="p-3 rounded-2xl bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-cyan-400 transition border border-gray-700" title="تعليمات الاستخدام">
+                    <i class="fa-solid fa-circle-question text-lg"></i>
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col justify-center">
+
+        <!-- ================= PC / HOST VIEW ================= -->
+        <div id="pcView" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+            <!-- Host Connection Panel -->
+            <section class="lg:col-span-5 flex flex-col gap-6">
+                
+                <div class="animated-gradient-border">
+                    <div class="bg-gray-950 rounded-[1.4rem] p-6 h-full flex flex-col justify-between">
+                        
+                        <div>
+                            <!-- Header Status -->
+                            <div class="flex items-center justify-between pb-4 mb-4 border-b border-gray-800">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-qrcode text-cyan-400 text-lg"></i>
+                                    <h2 class="font-extrabold text-gray-200 text-sm">رمز الاتصال المباشر</h2>
+                                </div>
+                                <span id="hostStatusBadge" class="px-3.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                    <span>جاري إنشاء الجلسة...</span>
+                                </span>
+                            </div>
+
+                            <!-- QR Code Container -->
+                            <div class="flex flex-col items-center justify-center p-6 bg-gray-900/80 rounded-2xl border border-gray-800 relative group my-2">
+                                <div id="qrCodeFrame" class="p-4 bg-white rounded-2xl shadow-2xl transition transform group-hover:scale-105 duration-300">
+                                    <div id="qrcode"></div>
+                                </div>
+                                <p class="text-xs text-gray-400 text-center max-w-xs leading-relaxed mt-4">
+                                    افتح الكاميرا في الموبايل واقرأ الرمز للربط التلقائي والإرسال المباشر.
+                                </p>
+                            </div>
+
+                            <!-- Manual 6-Digit Code Fallback -->
+                            <div class="mt-4 p-4 bg-gray-900/90 rounded-2xl border border-gray-800 flex items-center justify-between">
+                                <div>
+                                    <span class="block text-[11px] text-gray-400">الرمز السريع للربط اليدوي:</span>
+                                    <span id="shortCodeDisplay" class="font-mono font-black text-2xl text-cyan-400 tracking-widest">------</span>
+                                </div>
+                                <button onclick="copyHostCode()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl text-xs font-bold transition flex items-center gap-2 border border-gray-700">
+                                    <i class="fa-solid fa-copy"></i>
+                                    <span>نسخ الرمز</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Direct Link Simulation Switcher -->
+                        <div class="mt-6 pt-4 border-t border-gray-800/80 flex items-center justify-between">
+                            <span class="text-xs text-gray-400">فتح واجهة الموبايل هنا:</span>
+                            <button onclick="openMobileInTab()" class="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-cyan-600/20">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                <span>محاكاة شاشة الموبايل</span>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="glass-card rounded-2xl p-4 text-center">
+                        <span class="block text-[11px] text-gray-400 font-medium">الأجهزة المتصلة</span>
+                        <span id="statConnectedCount" class="text-xl font-black text-cyan-400 mt-1 block">0</span>
+                    </div>
+                    <div class="glass-card rounded-2xl p-4 text-center">
+                        <span class="block text-[11px] text-gray-400 font-medium">البيانات المستلمة</span>
+                        <span id="statReceivedBytes" class="text-xl font-black text-emerald-400 mt-1 block">0 MB</span>
+                    </div>
+                    <div class="glass-card rounded-2xl p-4 text-center">
+                        <span class="block text-[11px] text-gray-400 font-medium">نوع الاتصال</span>
+                        <span class="text-xl font-black text-purple-400 mt-1 block">P2P ⚡</span>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Files Received Section -->
+            <section class="lg:col-span-7 flex flex-col gap-6">
+
+                <div class="glass-panel rounded-3xl p-6 flex-1 flex flex-col min-h-[550px]">
+                    
+                    <!-- Header -->
+                    <div class="flex items-center justify-between pb-4 mb-4 border-b border-gray-800">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-inbox text-purple-400 text-lg"></i>
+                            <h2 class="font-extrabold text-gray-200 text-sm">معرض وسائط وملفات المستلمة</h2>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="clearReceivedFiles()" class="text-gray-400 hover:text-rose-400 text-xs px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-trash-can"></i>
+                                <span>مسح السجل</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar Container -->
+                    <div id="pcReceiveProgress" class="hidden mb-4 p-4 bg-gray-900/90 rounded-2xl border border-cyan-500/40">
+                        <div class="flex justify-between items-center text-xs mb-2">
+                            <span id="pcReceiveFileName" class="font-bold text-cyan-300 truncate max-w-[240px]">جاري استقبال ملف...</span>
+                            <span id="pcReceiveSpeed" class="text-emerald-400 font-mono text-[11px]">0 MB/s</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-3 overflow-hidden mb-2">
+                            <div id="pcReceiveProgressBar" class="bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 h-3 rounded-full w-0 transition-all duration-150"></div>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-gray-400 font-mono">
+                            <span id="pcReceivePercent">0%</span>
+                            <span id="pcReceiveSize">0 / 0 MB</span>
+                        </div>
+                    </div>
+
+                    <!-- Received Files List / Grid -->
+                    <div id="filesContainer" class="flex-1 space-y-3 overflow-y-auto max-h-[460px] pr-1">
+                        <!-- Empty State -->
+                        <div id="emptyState" class="h-80 flex flex-col items-center justify-center text-gray-500 text-center">
+                            <div class="w-24 h-24 rounded-3xl bg-gray-900/90 flex items-center justify-center text-4xl mb-4 border border-gray-800 text-gray-600 shadow-inner">
+                                <i class="fa-solid fa-cloud-arrow-down"></i>
+                            </div>
+                            <p class="text-base font-bold text-gray-300">لا توجد ملفات مستلمة حتى الآن</p>
+                            <p class="text-xs text-gray-500 max-w-xs mt-1.5 leading-relaxed">
+                                قم بمسح رمز QR بوسطة الموبايل وابدأ بإرسال الصور والملفات فورياً بدون حدود.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </section>
+
+        </div>
+
+        <!-- ================= MOBILE / CLIENT VIEW ================= -->
+        <div id="mobileView" class="hidden max-w-lg mx-auto w-full">
+            
+            <div class="glass-panel rounded-3xl p-6 border-2 border-gray-800 shadow-2xl relative">
+                
+                <!-- Connection Panel for Mobile -->
+                <div id="mobileConnectionBox" class="space-y-4 mb-6">
+                    <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                        <h3 class="font-extrabold text-sm text-gray-200 flex items-center gap-2">
+                            <i class="fa-solid fa-link text-cyan-400"></i>
+                            الربط مع الحاسوب
+                        </h3>
+                        <span id="mobileStatusBadge" class="text-xs text-rose-400 font-bold flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/20 px-3 py-1 rounded-full">
+                            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                            غير متصل
+                        </span>
+                    </div>
+
+                    <!-- Connection Action Options -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="startCameraScanner()" class="p-3.5 bg-gray-900 hover:bg-gray-800 text-cyan-400 rounded-2xl text-xs font-bold transition flex flex-col items-center justify-center gap-2 border border-gray-800 shadow-md">
+                            <i class="fa-solid fa-camera-retro text-2xl"></i>
+                            <span>مسح رمز QR</span>
+                        </button>
+
+                        <button onclick="toggleManualCodeInput()" class="p-3.5 bg-gray-900 hover:bg-gray-800 text-purple-400 rounded-2xl text-xs font-bold transition flex flex-col items-center justify-center gap-2 border border-gray-800 shadow-md">
+                            <i class="fa-solid fa-keyboard text-2xl"></i>
+                            <span>إدخال كود يدوياً</span>
+                        </button>
+                    </div>
+
+                    <!-- Camera Scanner Container -->
+                    <div id="cameraScannerWrapper" class="hidden p-3 bg-gray-950 rounded-2xl border border-cyan-500/40">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold text-cyan-300">وجه الكاميرا لرمز الحاسوب</span>
+                            <button onclick="stopCameraScanner()" class="text-gray-400 hover:text-white text-xs p-1">
+                                <i class="fa-solid fa-xmark text-base"></i>
+                            </button>
+                        </div>
+                        <div id="cameraReader" class="overflow-hidden rounded-xl bg-black h-56"></div>
+                    </div>
+
+                    <!-- Manual Input Box -->
+                    <div id="manualCodeBox" class="hidden p-4 bg-gray-900/90 rounded-2xl border border-gray-800 space-y-3">
+                        <label class="block text-xs font-bold text-gray-300">أدخل الرمز المكون من 6 أرقام:</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="manualCodeInput" maxlength="6" placeholder="123456" 
+                                   class="flex-1 bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-center text-lg font-mono font-bold text-cyan-400 focus:outline-none focus:border-cyan-500 tracking-widest">
+                            <button onclick="connectViaManualCode()" class="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-xs transition">
+                                ربط
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main File Sending Controls -->
+                <div id="mobileSendControls" class="opacity-50 pointer-events-none transition-all duration-300 space-y-4">
+                    
+                    <div class="p-3 bg-cyan-950/30 border border-cyan-500/30 rounded-2xl text-center text-xs text-cyan-300 font-bold mb-2">
+                        جاهز للنقل المباشر إلى الحاسوب 🚀
+                    </div>
+
+                    <!-- Instant Camera Button -->
+                    <button onclick="document.getElementById('mobileCameraInput').click()" 
+                            class="w-full py-4 px-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white rounded-2xl text-xs font-black shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-3 transition transform active:scale-98">
+                        <i class="fa-solid fa-camera text-xl"></i>
+                        <span>التقاط صورة وإرسالها فوراً</span>
+                    </button>
+                    <input type="file" id="mobileCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
+
+                    <!-- Gallery & File Picker Button -->
+                    <button onclick="document.getElementById('mobileFileInput').click()" 
+                            class="w-full py-4 px-5 bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white rounded-2xl text-xs font-black shadow-lg shadow-cyan-600/20 flex items-center justify-center gap-3 transition transform active:scale-98">
+                        <i class="fa-solid fa-folder-open text-xl"></i>
+                        <span>اختيار صور أو ملفات متعددة</span>
+                    </button>
+                    <input type="file" id="mobileFileInput" multiple class="hidden" onchange="handleFileSelect(event)">
+
+                    <!-- Drag and Drop Box -->
+                    <div id="mobileDropZone" onclick="document.getElementById('mobileFileInput').click()"
+                         class="border-2 border-dashed border-gray-700 hover:border-cyan-500 rounded-2xl p-6 text-center cursor-pointer bg-gray-900/40 hover:bg-gray-900/80 transition flex flex-col items-center justify-center">
+                        <i class="fa-solid fa-cloud-arrow-up text-3xl text-cyan-400 mb-2"></i>
+                        <span class="text-xs font-bold text-gray-300">اسحب الملفات هنا أو اضغط للرفع</span>
+                        <span class="text-[10px] text-gray-500 mt-1">يدعم الصور، الفيديوهات والمستندات</span>
+                    </div>
+
+                    <!-- Transfer Progress Widget -->
+                    <div id="mobileSendProgress" class="hidden p-4 bg-gray-950 rounded-2xl border border-gray-800 space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <span id="mobileSendFileName" class="font-bold text-gray-200 truncate max-w-[200px]">جاري الإرسال...</span>
+                            <span id="mobileSendPercent" class="text-cyan-400 font-mono font-bold">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
+                            <div id="mobileSendProgressBar" class="bg-gradient-to-r from-cyan-400 to-blue-500 h-2.5 rounded-full w-0 transition-all duration-150"></div>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-gray-400 font-mono">
+                            <span id="mobileSendSpeed">0 MB/s</span>
+                            <span id="mobileSendSize">0 / 0 MB</span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Image Preview Modal -->
+    <div id="previewModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="relative max-w-4xl w-full flex flex-col items-center">
+            <button onclick="toggleModal('previewModal')" class="absolute -top-12 left-0 text-white hover:text-cyan-400 text-sm font-bold flex items-center gap-2 bg-gray-900/80 px-4 py-2 rounded-xl border border-gray-800">
+                <i class="fa-solid fa-xmark text-lg"></i>
+                <span>إغلاق المعاينة</span>
+            </button>
+            <img id="previewImage" src="" class="max-h-[80vh] w-auto rounded-2xl shadow-2xl border border-gray-800 object-contain" alt="Preview">
+            <div class="mt-4 flex gap-3">
+                <a id="previewDownloadBtn" href="" download class="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition shadow-lg shadow-cyan-600/30">
+                    <i class="fa-solid fa-download"></i>
+                    <span>تحميل الصورة برابط مباشر</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help & Instructions Modal -->
+    <div id="instructionsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-panel rounded-3xl max-w-lg w-full p-6 relative border border-gray-800 shadow-2xl">
+            <button onclick="toggleModal('instructionsModal')" class="absolute top-5 left-5 text-gray-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-circle-info text-cyan-400"></i>
+                كيف يعمل تطبيق "سريع" للربط المباشر؟
+            </h3>
+            
+            <div class="space-y-3 text-xs text-gray-300 leading-relaxed">
+                <div class="p-3.5 bg-gray-900/90 rounded-2xl border border-gray-800">
+                    <strong class="text-cyan-400 block mb-1">1. الربط عبر شبكة الويب المباشرة (PeerJS):</strong>
+                    يعتمد التطبيق على تقنية WebRTC لنقل الملفات من متصفح الموبايل إلى متصفح الحاسوب مباشرة بجهد خفيف وسرعة فائقة.
+                </div>
+                <div class="p-3.5 bg-gray-900/90 rounded-2xl border border-gray-800">
+                    <strong class="text-emerald-400 block mb-1">2. خطوات الاستخدام البسيطة:</strong>
+                    - افتح الموقع على شاشة الحاسوب. <br>
+                    - افتح الكاميرا في الموبايل واقرأ رمز QR لتتم عملية المقارنة والربط فوراً.
+                </div>
+                <div class="p-3.5 bg-gray-900/90 rounded-2xl border border-gray-800">
+                    <strong class="text-purple-400 block mb-1">3. أمان وخصوصية تامة:</strong>
+                    الملفات لا تمر عبر أي سيرفر خارجي ولا يتم تخزينها في أي سحابة، بل تنتقل مشفرة بين أجهزتك فقط.
+                </div>
+            </div>
+
+            <button onclick="toggleModal('instructionsModal')" class="w-full mt-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-cyan-600/20">
+                فهمت ذلك، إغلاق
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Layer -->
+    <div id="toastContainer" class="fixed bottom-6 left-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // Global Application State Variables
+        let currentMode = 'pc';
+        let peer = null;
+        let activeConnection = null;
+        let currentPeerId = null;
+        let shortCode = null;
+        let html5QrScanner = null;
+        let totalReceivedBytesCount = 0;
+
+        // Constants for Chunking Large Files over WebRTC
+        const CHUNK_SIZE = 64 * 1024; // 64 KB per chunk
+
+        // Receiver state buffers
+        let receiveBuffer = [];
+        let receivedSize = 0;
+        let currentFileMetadata = null;
+        let transferStartTime = 0;
+
+        // On Load Setup
+        window.addEventListener('load', () => {
+            handleURLHash();
+            initPCMode();
+        });
+
+        // Mode Navigation Handler
+        function setMode(mode) {
+            currentMode = mode;
+            const pcView = document.getElementById('pcView');
+            const mobileView = document.getElementById('mobileView');
+            const pcBtn = document.getElementById('pcModeBtn');
+            const mobileBtn = document.getElementById('mobileModeBtn');
+
+            if (mode === 'pc') {
+                pcView.classList.remove('hidden');
+                mobileView.classList.add('hidden');
+                pcBtn.className = "px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-600/20";
+                mobileBtn.className = "px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 text-gray-400 hover:text-white";
+            } else {
+                pcView.classList.add('hidden');
+                mobileView.classList.remove('hidden');
+                mobileBtn.className = "px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-600/20";
+                pcBtn.className = "px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 text-gray-400 hover:text-white";
+                
+                // Initialize Peer for Mobile client
+                if (!peer) initMobilePeer();
+            }
+        }
+
+        // Handle URL Hash for Direct Joining (#connect=XXXXXX)
+        function handleURLHash() {
+            const hash = window.location.hash;
+            if (hash.includes('connect=')) {
+                const targetCode = hash.split('connect=')[1];
+                setMode('mobile');
+                setTimeout(() => {
+                    document.getElementById('manualCodeInput').value = targetCode;
+                    toggleManualCodeInput(true);
+                    connectToHost(targetCode);
+                }, 500);
+            }
+        }
+
+        // Initialize PeerJS for Host PC
+        function initPCMode() {
+            // Generate a 6-digit short code ID
+            shortCode = Math.floor(100000 + Math.random() * 900000).toString();
+            currentPeerId = `sareea-app-id-${shortCode}`;
+
+            document.getElementById('shortCodeDisplay').innerText = shortCode;
+
+            // Initialize Peer instance
+            peer = new Peer(currentPeerId, {
+                debug: 1
+            });
+
+            peer.on('open', (id) => {
+                updateHostBadge('waiting', 'بانتظار قراءة الرمز...');
+                generateQRCode(shortCode);
+            });
+
+            peer.on('connection', (conn) => {
+                activeConnection = conn;
+                setupConnectionListeners(conn);
+            });
+
+            peer.on('error', (err) => {
+                console.error("Peer error:", err);
+                showToast("حدث خطأ في شبكة الاتصال، إعادة المحاولة...", "error");
+                setTimeout(initPCMode, 2000);
+            });
+        }
+
+        // Generate QR Code containing URL to mobile view
+        function generateQRCode(code) {
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = "";
+
+            const targetURL = `${window.location.origin}${window.location.pathname}#connect=${code}`;
+
+            new QRCode(qrContainer, {
+                text: targetURL,
+                width: 170,
+                height: 170,
+                colorDark: "#030712",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
+        // Setup WebRTC Data Listeners for Host Receiver
+        function setupConnectionListeners(conn) {
+            conn.on('open', () => {
+                updateHostBadge('connected', 'الموبايل متصل الآن ✅');
+                document.getElementById('statConnectedCount').innerText = "1";
+                showToast("تم ربط الموبايل بنجاح!", "success");
+                playBeepSound(600);
+            });
+
+            conn.on('data', (data) => {
+                handleIncomingData(data);
+            });
+
+            conn.on('close', () => {
+                updateHostBadge('waiting', 'تم قطع الاتصال، بانتظار إعادة الربط...');
+                document.getElementById('statConnectedCount').innerText = "0";
+                showToast("تم قطع الاتصال بين الأجهزة", "info");
+            });
+        }
+
+        // Parse Incoming Data (File Header / Chunks)
+        function handleIncomingData(data) {
+            if (data.type === 'HEADER') {
+                // Initial File Metadata
+                currentFileMetadata = data;
+                receiveBuffer = [];
+                receivedSize = 0;
+                transferStartTime = Date.now();
+
+                // Show progress bar
+                const progressBox = document.getElementById('pcReceiveProgress');
+                progressBox.classList.remove('hidden');
+                document.getElementById('pcReceiveFileName').innerText = data.name;
+                document.getElementById('pcReceiveProgressBar').style.width = '0%';
+                document.getElementById('pcReceivePercent').innerText = '0%';
+            } 
+            else if (data.type === 'CHUNK') {
+                // Receive Raw Chunk ArrayBuffer
+                receiveBuffer.push(data.chunk);
+                receivedSize += data.chunk.byteLength;
+
+                const progress = Math.min(100, Math.round((receivedSize / currentFileMetadata.size) * 100));
+                const elapsedTime = (Date.now() - transferStartTime) / 1000;
+                const speed = elapsedTime > 0 ? (receivedSize / (1024 * 1024) / elapsedTime).toFixed(1) : "0";
+
+                document.getElementById('pcReceiveProgressBar').style.width = `${progress}%`;
+                document.getElementById('pcReceivePercent').innerText = `${progress}%`;
+                document.getElementById('pcReceiveSpeed').innerText = `${speed} MB/s`;
+                document.getElementById('pcReceiveSize').innerText = `${formatBytes(receivedSize)} / ${formatBytes(currentFileMetadata.size)}`;
+
+                if (receivedSize >= currentFileMetadata.size) {
+                    // Complete File Assembled
+                    completeFileReception();
+                }
+            }
+        }
+
+        // Assemble File Blob and Add to PC Gallery
+        function completeFileReception() {
+            document.getElementById('pcReceiveProgress').classList.add('hidden');
+
+            const blob = new Blob(receiveBuffer, { type: currentFileMetadata.mime });
+            const fileUrl = URL.createObjectURL(blob);
+
+            // Update stats
+            totalReceivedBytesCount += currentFileMetadata.size;
+            document.getElementById('statReceivedBytes').innerText = formatBytes(totalReceivedBytesCount);
+
+            // Render Card in List
+            renderReceivedFileCard({
+                name: currentFileMetadata.name,
+                size: currentFileMetadata.size,
+                mime: currentFileMetadata.mime,
+                url: fileUrl
+            });
+
+            // Trigger Visual and Audio Feedback
+            confetti({
+                particleCount: 60,
+                spread: 70,
+                origin: { y: 0.7 }
+            });
+            playBeepSound(880);
+            showToast(`تم استقبال (${currentFileMetadata.name}) بنجاح!`, "success");
+        }
+
+        // Render Received File Card in PC View
+        function renderReceivedFileCard(file) {
+            const emptyState = document.getElementById('emptyState');
+            if (emptyState) emptyState.style.display = 'none';
+
+            const container = document.getElementById('filesContainer');
+            const isImage = file.mime.startsWith('image/');
+
+            const card = document.createElement('div');
+            card.className = "p-4 glass-card rounded-2xl flex items-center justify-between gap-4 border border-gray-800 hover:border-cyan-500/40 transition duration-300 shadow-lg";
+
+            let iconHtml = '';
+            if (isImage) {
+                iconHtml = `<img src="${file.url}" onclick="openImagePreview('${file.url}')" class="w-14 h-14 rounded-xl object-cover border border-gray-700 cursor-pointer hover:opacity-80 transition shadow-md" alt="preview">`;
+            } else {
+                iconHtml = `<div class="w-14 h-14 rounded-xl bg-gray-900 flex items-center justify-center text-2xl text-cyan-400 border border-gray-800"><i class="fa-solid fa-file-arrow-down"></i></div>`;
+            }
+
+            card.innerHTML = `
+                <div class="flex items-center gap-3.5 overflow-hidden">
+                    ${iconHtml}
+                    <div class="overflow-hidden">
+                        <h4 class="font-bold text-xs text-gray-200 truncate max-w-[200px] sm:max-w-[320px]">${file.name}</h4>
+                        <p class="text-[11px] text-gray-400 mt-0.5 font-mono">${formatBytes(file.size)} • ${new Date().toLocaleTimeString('ar-EG')}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    ${isImage ? `<button onclick="openImagePreview('${file.url}')" class="p-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-cyan-400 rounded-xl text-xs transition border border-gray-700"><i class="fa-solid fa-eye"></i></button>` : ''}
+                    <a href="${file.url}" download="${file.name}" class="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-cyan-600/20">
+                        <i class="fa-solid fa-download"></i>
+                        <span>تحميل</span>
+                    </a>
+                </div>
+            `;
+
+            container.insertBefore(card, container.firstChild);
+        }
+
+        // Mobile Client Peer initialization
+        function initMobilePeer() {
+            peer = new Peer({ debug: 1 });
+
+            peer.on('open', () => {
+                updateMobileBadge(false, 'جاهز للربط بالكمبيوتر');
+            });
+
+            peer.on('error', (err) => {
+                console.error("Mobile Peer error:", err);
+            });
+        }
+
+        // Connect to Host via 6-digit code
+        function connectToHost(targetCode) {
+            if (!peer) initMobilePeer();
+
+            const fullHostId = `sareea-app-id-${targetCode}`;
+            updateMobileBadge(false, 'جاري الربط مع الكمبيوتر...');
+
+            activeConnection = peer.connect(fullHostId, { reliable: true });
+
+            activeConnection.on('open', () => {
+                updateMobileBadge(true, 'متصل مع الحاسوب ✅');
+                enableMobileSendControls(true);
+                stopCameraScanner();
+                showToast("تم الاتصال بالحاسوب بنجاح!", "success");
+            });
+
+            activeConnection.on('close', () => {
+                updateMobileBadge(false, 'تم انفصال الاتصال');
+                enableMobileSendControls(false);
+                showToast("انقطع الاتصال بالحاسوب", "error");
+            });
+
+            activeConnection.on('error', (err) => {
+                showToast("تعذر الاتصال، يرجى التأكد من الكود", "error");
+                updateMobileBadge(false, 'فشل الاتصال');
+            });
+        }
+
+        // Mobile File Selection and Chunked Transfer Logic
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            if (!activeConnection) {
+                showToast("يرجى الربط مع الحاسوب أولاً", "error");
+                return;
+            }
+
+            for (let i = 0; i < files.length; i++) {
+                sendFileInChunks(files[i]);
+            }
+        }
+
+        // Chunked File Transmission over WebRTC Data Channel
+        function sendFileInChunks(file) {
+            const progressBox = document.getElementById('mobileSendProgress');
+            const progressName = document.getElementById('mobileSendFileName');
+            const progressBar = document.getElementById('mobileSendProgressBar');
+            const progressPercent = document.getElementById('mobileSendPercent');
+            const progressSpeed = document.getElementById('mobileSendSpeed');
+            const progressSize = document.getElementById('mobileSendSize');
+
+            progressBox.classList.remove('hidden');
+            progressName.innerText = file.name;
+
+            // 1. Send Header Meta
+            activeConnection.send({
+                type: 'HEADER',
+                name: file.name,
+                size: file.size,
+                mime: file.type || 'application/octet-stream'
+            });
+
+            // 2. Read File as ArrayBuffer and send chunks
+            const reader = new FileReader();
+            let offset = 0;
+            const startTime = Date.now();
+
+            reader.onload = function(e) {
+                activeConnection.send({
+                    type: 'CHUNK',
+                    chunk: e.target.result
+                });
+
+                offset += e.target.result.byteLength;
+
+                const progress = Math.min(100, Math.round((offset / file.size) * 100));
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                const speed = elapsedTime > 0 ? (offset / (1024 * 1024) / elapsedTime).toFixed(1) : "0";
+
+                progressBar.style.width = `${progress}%`;
+                progressPercent.innerText = `${progress}%`;
+                progressSpeed.innerText = `${speed} MB/s`;
+                progressSize.innerText = `${formatBytes(offset)} / ${formatBytes(file.size)}`;
+
+                if (offset < file.size) {
+                    readNextChunk();
+                } else {
+                    setTimeout(() => {
+                        progressBox.classList.add('hidden');
+                        showToast(`تم إرسال (${file.name}) بنجاح!`, "success");
+                    }, 400);
+                }
+            };
+
+            function readNextChunk() {
+                const slice = file.slice(offset, offset + CHUNK_SIZE);
+                reader.readAsArrayBuffer(slice);
+            }
+
+            readNextChunk();
+        }
+
+        // Camera Scanner Handlers using HTML5-QRCode
+        function startCameraScanner() {
+            const wrapper = document.getElementById('cameraScannerWrapper');
+            wrapper.classList.remove('hidden');
+
+            html5QrScanner = new Html5Qrcode("cameraReader");
+            html5QrScanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 200, height: 200 } },
+                (decodedText) => {
+                    // Extract code from full URL or raw string
+                    let extractedCode = decodedText;
+                    if (decodedText.includes('connect=')) {
+                        extractedCode = decodedText.split('connect=')[1];
+                    }
+                    connectToHost(extractedCode);
+                },
+                (errorMessage) => {}
+            ).catch(() => {
+                showToast("تعذر الوصول لكاميرا الهاتف", "error");
+                stopCameraScanner();
+            });
+        }
+
+        function stopCameraScanner() {
+            if (html5QrScanner) {
+                html5QrScanner.stop().then(() => {
+                    document.getElementById('cameraScannerWrapper').classList.add('hidden');
+                }).catch(() => {
+                    document.getElementById('cameraScannerWrapper').classList.add('hidden');
+                });
+            } else {
+                document.getElementById('cameraScannerWrapper').classList.add('hidden');
+            }
+        }
+
+        // UI Helpers & Status Updaters
+        function updateHostBadge(state, text) {
+            const badge = document.getElementById('hostStatusBadge');
+            if (state === 'connected') {
+                badge.className = "px-3.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-2";
+                badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span><span>${text}</span>`;
+            } else {
+                badge.className = "px-3.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-2";
+                badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span><span>${text}</span>`;
+            }
+        }
+
+        function updateMobileBadge(isConnected, text) {
+            const badge = document.getElementById('mobileStatusBadge');
+            if (isConnected) {
+                badge.className = "text-xs text-emerald-400 font-bold flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1 rounded-full";
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span><span>${text}</span>`;
+            } else {
+                badge.className = "text-xs text-rose-400 font-bold flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/20 px-3.5 py-1 rounded-full";
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span><span>${text}</span>`;
+            }
+        }
+
+        function enableMobileSendControls(enable) {
+            const controls = document.getElementById('mobileSendControls');
+            if (enable) {
+                controls.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                controls.classList.add('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        function toggleManualCodeInput(forceShow) {
+            const box = document.getElementById('manualCodeBox');
+            if (forceShow || box.classList.contains('hidden')) {
+                box.classList.remove('hidden');
+            } else {
+                box.classList.add('hidden');
+            }
+        }
+
+        function connectViaManualCode() {
+            const input = document.getElementById('manualCodeInput').value.trim();
+            if (input.length === 6) {
+                connectToHost(input);
+            } else {
+                showToast("أدخل رمزا صحيحا مكونا من 6 أرقام", "error");
+            }
+        }
+
+        function openMobileInTab() {
+            const url = `${window.location.origin}${window.location.pathname}#connect=${shortCode}`;
+            window.open(url, '_blank');
+        }
+
+        function copyHostCode() {
+            if (shortCode) {
+                navigator.clipboard.writeText(shortCode);
+                showToast("تم نسخ الرمز السريع للحافظة", "success");
+            }
+        }
+
+        function openImagePreview(url) {
+            document.getElementById('previewImage').src = url;
+            document.getElementById('previewDownloadBtn').href = url;
+            toggleModal('previewModal');
+        }
+
+        function toggleModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.toggle('hidden');
+        }
+
+        function clearReceivedFiles() {
+            document.getElementById('filesContainer').innerHTML = `
+                <div id="emptyState" class="h-80 flex flex-col items-center justify-center text-gray-500 text-center">
+                    <div class="w-24 h-24 rounded-3xl bg-gray-900/90 flex items-center justify-center text-4xl mb-4 border border-gray-800 text-gray-600 shadow-inner">
+                        <i class="fa-solid fa-cloud-arrow-down"></i>
+                    </div>
+                    <p class="text-base font-bold text-gray-300">لا توجد ملفات مستلمة حتى الآن</p>
+                </div>
+            `;
+            showToast("تم مسح السجل بنجاح", "info");
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let bgClass = "bg-gray-900 text-gray-200 border-gray-700";
+            let iconClass = "fa-circle-info text-cyan-400";
+
+            if (type === "success") {
+                bgClass = "bg-emerald-950/90 text-emerald-200 border-emerald-700/60";
+                iconClass = "fa-circle-check text-emerald-400";
+            } else if (type === "error") {
+                bgClass = "bg-rose-950/90 text-rose-200 border-rose-700/60";
+                iconClass = "fa-circle-exclamation text-rose-400";
+            }
+
+            toast.className = `p-3.5 px-4 rounded-2xl border text-xs font-bold shadow-2xl flex items-center gap-2.5 transition-all duration-300 pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `<i class="fa-solid ${iconClass} text-base"></i> <span>${message}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function playBeepSound(freq = 880) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.25);
+            } catch(e) {}
+        }
+    </script>
+</body>
+</html>
